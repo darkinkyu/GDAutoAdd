@@ -16,7 +16,7 @@
  */
 
 const authConfig = {
-    version: "0.1.1-beta",
+    version: "0.1.1",
     dailyLimit: false, // 是否限制每一个邮箱每天只能提交一次请求
     client_id: "",
     client_secret: "",
@@ -155,7 +155,7 @@ async function handleRequest(request) {
                 });
             }
         default:
-            const html_response = await fetch('https://download.stevenz.net/shkds/test.html');
+            const html_response = await fetch('https://cdn.jsdelivr.net/gh/clatteringmarion/GDAutoAdd@0.1.1/index.html');
             var html = await html_response.text();
 
             var html_captchascript = '';
