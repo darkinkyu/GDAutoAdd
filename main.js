@@ -35,7 +35,7 @@ const gd_config = {
 }
 
 const hcaptcha_config = {
-    class: 'h-captcha', // 无需修改
+    type: 'h-captcha', // 无需修改
     verify_url: 'https://hcaptcha.com/siteverify', // 无需修改
     js_url: '<script src=\'https://www.hcaptcha.com/1/api.js\' async defer></script>', // 无需修改
     site_key: '',
@@ -104,7 +104,7 @@ async function handleRequest(request) {
                         dailyLimit.push(requestBody.emailAddress);
                     }
                 }
-                if (!checkEmail(requestBody.emailAddress)){
+                if (!checkEmail(requestBody.emailAddress)) {
                     return new Response("您位于黑名单", {
                         status: 429
                     });
@@ -115,7 +115,7 @@ async function handleRequest(request) {
                         status: 403
                     });
                 }
-                if (gd_config.type === "group"){
+                if (gd_config.type === "group") {
                     try {
                         let result = await gd.addMemberToGroups(requestBody);
                         return new Response("OK", {
@@ -126,7 +126,7 @@ async function handleRequest(request) {
                             status: 500
                         });
                     }
-                } else if (gd_config.type === "drive"){
+                } else if (gd_config.type === "drive") {
                     try {
                         let result = await gd.addMemberToTeamDrive(requestBody);
                         return new Response("OK", {
@@ -137,7 +137,7 @@ async function handleRequest(request) {
                             status: 500
                         });
                     }
-                } else{
+                } else {
                     return new Response("Server Config Error", {
                         status: 500
                     });
@@ -159,34 +159,28 @@ async function handleRequest(request) {
             var html = await html_response.text();
 
             var html_captchascript = '';
-            if (captcha_config.type  === "hcaptcha") {
-                html_captchascript=`${hcaptcha_config.js_url}`;
-            }
-            else if (captcha_config.type  === "recaptcha"){
-                html_captchascript=`${recaptcha_config.js_url}`;
-            }
-            else {
+            if (captcha_config.type === "hcaptcha") {
+                html_captchascript = `${hcaptcha_config.js_url}`;
+            } else if (captcha_config.type === "recaptcha") {
+                html_captchascript = `${recaptcha_config.js_url}`;
+            } else {
             }
 
             var html_captchaprompt = '';
-            if (captcha_config.type  === "hcaptcha") {
-                html_captchaprompt=`<div class="${hcaptcha_config.class}" data-sitekey="${hcaptcha_config.site_key}"></div>`;
-            }
-            else if (captcha_config.type  === "recaptcha"){
-                html_captchaprompt=`<div class="${recaptcha_config.class}" data-sitekey="${recaptcha_config.site_key}"></div>`;
-            }
-            else {
+            if (captcha_config.type === "hcaptcha") {
+                html_captchaprompt = `<div class="${hcaptcha_config.type}" data-sitekey="${hcaptcha_config.site_key}"></div>`;
+            } else if (captcha_config.type === "recaptcha") {
+                html_captchaprompt = `<div class="${recaptcha_config.type}" data-sitekey="${recaptcha_config.site_key}"></div>`;
+            } else {
             }
 
             var html_captchatoken = '';
-            if (captcha_config.type  === "hcaptcha") {
-                html_captchatoken='hcaptcha.getResponse(),';
-            }
-            else if (captcha_config.type  === "recaptcha"){
-                html_captchatoken='grecaptcha.getResponse(),';
-            }
-            else {
-                html_captchatoken='empty';
+            if (captcha_config.type === "hcaptcha") {
+                html_captchatoken = 'hcaptcha.getResponse()';
+            } else if (captcha_config.type === "recaptcha") {
+                html_captchatoken = 'grecaptcha.getResponse()';
+            } else {
+                html_captchatoken = '"empty"';
             }
 
             return new Response(myInterpolate({
@@ -203,6 +197,7 @@ async function handleRequest(request) {
             });
     }
 }
+
 // https://stackoverflow.com/a/2117523
 function uuidv4() {
     return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
@@ -214,36 +209,29 @@ function uuidv4() {
     });
 }
 
-function checkEmail(email_address){
+function checkEmail(email_address) {
     var idx = email_address.lastIndexOf('@');
     if (member_filter.status) {
-        if (member_filter.mode === "block"){
+        if (member_filter.mode === "block") {
             if (member_filter.domain_filter.includes(email_address.slice(idx + 1))) {
                 return false;
-            }
-            else if(member_filter.member_filter.includes(email_address)){
+            } else if (member_filter.member_filter.includes(email_address)) {
                 return false;
-            }
-            else {
+            } else {
                 return true;
             }
-        }
-        else if(member_filter.mode === "allow"){
+        } else if (member_filter.mode === "allow") {
             if (member_filter.domain_filter.includes(email_address.slice(idx + 1))) {
                 return true;
-            }
-            else if(member_filter.member_filter.includes(email_address)){
+            } else if (member_filter.member_filter.includes(email_address)) {
                 return true;
-            }
-            else {
+            } else {
                 return false;
             }
-        }
-        else {
+        } else {
             return false;
         }
-    }
-    else {
+    } else {
         return true
     }
 }
@@ -261,11 +249,11 @@ class googleDrive {
         this.accessToken();
     }
 
-    async addMemberToGroups(requestBody){
+    async addMemberToGroups(requestBody) {
         console.log(`Adding member ${requestBody.emailAddress} to Google Groups`);
         let url = `https://www.googleapis.com/admin/directory/v1/groups/${gd_config.id}/members`;
         let requestOption = await this.requestOption(
-            { "Content-Type": "application/json" },
+            {"Content-Type": "application/json"},
             "POST"
         );
         let post_data = {
@@ -277,14 +265,14 @@ class googleDrive {
         return await response.text();
     }
 
-    async addMemberToTeamDrive(requestBody){
+    async addMemberToTeamDrive(requestBody) {
         // Share team drive with email address
         console.log(`Sharing the team drive to ${requestBody.emailAddress}`);
         let url = `https://www.googleapis.com/drive/v3/files/${gd_config.id}/permissions`;
-        let params = { supportsAllDrives: true };
+        let params = {supportsAllDrives: true};
         url += "?" + this.enQuery(params);
         let requestOption = await this.requestOption(
-            { "Content-Type": "application/json" },
+            {"Content-Type": "application/json"},
             "POST"
         );
         let post_data = {
@@ -314,20 +302,20 @@ class googleDrive {
 
     async validateRecaptcha(token) {
         var url = '';
-        if ( captcha_config.type  === "hcaptcha" ) {
+        var post_data = {}
+        if (captcha_config.type === "hcaptcha") {
             url = hcaptcha_config.verify_url;
-            const post_data = {
+            post_data = {
                 secret: hcaptcha_config.secret_key,
                 response: token
             };
-        } else if ( captcha_config.type  === "recaptcha"){
+        } else if (captcha_config.type === "recaptcha") {
             url = recaptcha_config.verify_url;
-            const post_data = {
+            post_data = {
                 secret: recaptcha_config.secret_key,
                 response: token
             };
-        }
-        else {
+        } else {
             return true;
         }
         const reqOpt = {
@@ -369,7 +357,7 @@ class googleDrive {
     async requestOption(headers = {}, method = "GET") {
         const accessToken = await this.accessToken();
         headers["authorization"] = "Bearer " + accessToken;
-        return { method: method, headers: headers };
+        return {method: method, headers: headers};
     }
 
     enQuery(data) {
