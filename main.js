@@ -16,8 +16,8 @@
  */
 
 const authConfig = {
-    version: "0.1.1",
-    dailyLimit: false, // 是否限制每一个邮箱每天只能提交一次请求
+    version: "0.1.2-dev",
+    dailyLimit: true, // 每天限制
     client_id: "",
     client_secret: "",
     refresh_token: "", // 授权 token
@@ -53,10 +53,15 @@ const recaptcha_config = {
 const member_filter = {
     status: true, // true 为开启筛选， false为关闭筛选
     mode: 'allow', // block 为黑名单（别问我为什么叫block）， allow 为白名单
-    member_filter: ['test@example.com'], // 单邮箱筛选
+    member_filter: [], // 单邮箱筛选
     domain_filter: ['gmail.com'] // 域名屏蔽
 }
 
+const limit_config = {
+    emailLimit: false, // 限制每天重复邮箱
+    userLimit: true, // 限制每天加盘人数
+    user_limitn: 100 // 加盘人数设定
+}
 
 var gd;
 
@@ -66,7 +71,8 @@ addEventListener("fetch", event => {
     event.respondWith(handleRequest(event.request));
 });
 
-var dailyLimit = [];
+var dailyEmailLimit = [];
+var dailyUserLimit = 0;
 
 /**
  * Fetch and log a request
@@ -79,7 +85,8 @@ async function handleRequest(request) {
         // Remove email rate limit every day
         if (new Date().getDate() != today) {
             today = new Date().getDate();
-            dailyLimit.length = 0;
+            dailyEmailLimit.length = 0;
+            dailyUserLimit = 0;
         }
     }
 
@@ -95,13 +102,12 @@ async function handleRequest(request) {
             if (request.method === "POST") {
                 const requestBody = await request.json();
 
-                if (authConfig.dailyLimit) {
-                    if (dailyLimit.includes(requestBody.emailAddress)) {
-                        return new Response("每天只允许提交一次", {
+                if (authConfig.dailyLimit && requestBody.method == 'add') {
+                    let checkResult = checkLimit(requestBody.emailAddress)
+                    if (!checkResult) {
+                        return new Response(checkResult, {
                             status: 429
                         });
-                    } else {
-                        dailyLimit.push(requestBody.emailAddress);
                     }
                 }
                 if (!checkEmail(requestBody.emailAddress)) {
@@ -128,10 +134,20 @@ async function handleRequest(request) {
                     }
                 } else if (gd_config.type === "drive") {
                     try {
-                        let result = await gd.addMemberToTeamDrive(requestBody);
-                        return new Response("OK", {
-                            status: 200
-                        });
+                        let result = "";
+                        if (requestBody.method == 'remove') {
+                            result = await gd.removeMemberFromTeamDrive(requestBody);
+                            return new Response("OK", {
+                                status: 200
+                            });
+                        } else if (requestBody.method == 'add') {
+                            result = await gd.addMemberToTeamDrive(requestBody);
+                            return new Response("OK", {
+                                status: 200
+                            });
+                        } else {
+                            throw "System Error";
+                        }
                     } catch (err) {
                         return new Response(err.toString(), {
                             status: 500
@@ -155,7 +171,7 @@ async function handleRequest(request) {
                 });
             }
         default:
-            const html_response = await fetch('https://cdn.jsdelivr.net/gh/clatteringmarion/GDAutoAdd@0.1.1/index.html');
+            const html_response = await fetch('https://cdn.jsdelivr.net/gh/clatteringmarion/GDAutoAdd@dev/index.html');
             var html = await html_response.text();
 
             var html_captchascript = '';
@@ -198,17 +214,6 @@ async function handleRequest(request) {
     }
 }
 
-// https://stackoverflow.com/a/2117523
-function uuidv4() {
-    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
-        // tslint:disable-next-line:one-variable-per-declaration
-        const r = (Math.random() * 16) | 0,
-            // tslint:disable-next-line:triple-equals
-            v = c == "x" ? r : (r & 0x3) | 0x8;
-        return v.toString(16);
-    });
-}
-
 function checkEmail(email_address) {
     var idx = email_address.lastIndexOf('@');
     if (member_filter.status) {
@@ -241,6 +246,18 @@ function myInterpolate(params, text) {
         text = text.replace('${' + key + '}', params[key])
     }
     return text;
+}
+
+function checkLimit(email) {
+    if (dailyEmailLimit.includes(email) && limit_config.emailLimit) {
+        return "每天只允许提交一次";
+    } else if (dailyUserLimit > limit_config.user_limitn && limit_config.userLimit) {
+        return "今天限额已到，明天趁早";
+    } else {
+        dailyEmailLimit.push(email);
+        dailyUserLimit += 1;
+        return true;
+    }
 }
 
 class googleDrive {
@@ -284,6 +301,47 @@ class googleDrive {
         let response = await fetch(url, requestOption);
         return await response.text();
     }
+
+    async _removeMemberFromTeamDrive(permission) {
+        let url = `https://www.googleapis.com/drive/v3/files/${gd_config.id}/permissions/${permission.id}`;
+        let params = {supportsAllDrives: true};
+        url += "?" + this.enQuery(params);
+        let requestOption = await this.requestOption(
+            {"Content-Type": "application/json"},
+            'DELETE'
+        );
+        let response = await fetch(url, requestOption);
+        return await response.text();
+    }
+
+    async removeMemberFromTeamDrive(requestBody) {
+        // Share team drive with email address
+        console.log(`Remove ${requestBody.emailAddress} from the team drive`);
+
+        let pageToken = '';
+        do {
+            let url = `https://www.googleapis.com/drive/v3/files/${gd_config.id}/permissions`;
+            let params = {supportsAllDrives: true, fields: '*'};
+            url += "?" + this.enQuery(params);
+            let requestOption = await this.requestOption(
+                {"Content-Type": "application/json"},
+            );
+            let response = await fetch(url, requestOption);
+            var permissions = await response.json();
+
+            for (var p in permissions.permissions) {
+                if (permissions.permissions[p].emailAddress == requestBody.emailAddress && permissions.permissions[p].role == 'reader') {
+                    var removeResponse = await this._removeMemberFromTeamDrive(permissions.permissions[p]);
+                    return;
+                }
+            }
+
+            if (permissions.nextPageToken) {
+                pageToken = permissions.nextPageToken;
+            }
+        } while (permissions.nextPageToken);
+    }
+
 
     async accessToken() {
         console.log("accessToken");
@@ -368,3 +426,5 @@ class googleDrive {
         return ret.join("&");
     }
 }
+}
+
