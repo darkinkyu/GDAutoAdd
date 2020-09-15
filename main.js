@@ -63,6 +63,8 @@ const limit_config = {
     user_limitn: 100 // 加盘人数设定
 }
 
+const add_css = "" // 额外CSS
+
 var gd;
 
 var today;
@@ -204,6 +206,7 @@ async function handleRequest(request) {
                 captcha_script: html_captchascript,
                 captcha_prompt: html_captchaprompt,
                 captcha_token: html_captchatoken,
+                additional_css: add_css,
             }, html), {
                 status: 200,
                 headers: {
