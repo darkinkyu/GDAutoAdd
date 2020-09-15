@@ -45,15 +45,17 @@
                     您的GMail邮箱地址
                   </label>
                   <input
-                    type="email"
-                    class="form-control"
-                    id="emailAddress"
-                    placeholder="您的GMail邮箱地址"
+                          type="email"
+                          class="form-control"
+                          id="emailAddress"
+                          placeholder="您的GMail邮箱地址"
                   />
                 </div>
-		${captcha_prompt}
-		<button type="submit" class="btn btn-success" name="method" value="add">加入</button>
-		<button type="submit" class="btn btn-danger" name="method" value="remove">移除</button>
+                ${captcha_prompt}
+                <div class="col-md-12 text-center">
+                  <button class="btn btn-success" name="method" type="submit" value="add">加入</button>
+                  <button class="btn btn-danger" name="method" type="submit" value="remove">移除</button>
+                </div>
               </form>
             </div>
           </div>

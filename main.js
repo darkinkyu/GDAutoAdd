@@ -32,15 +32,15 @@ const gd_config = {
     type: "", // "group", "drive" 添加至Shared Drive还是Group
     id: "", //Shared Drive ID或Groups ID
     drive_permission: "reader", // Google Drive 权限
-    group_permission: "MEMBER" // Google Groups 权限
+    group_permission: "MEMBER", // Google Groups 权限
 }
 
 const hcaptcha_config = {
     type: 'h-captcha', // 无需修改
     verify_url: 'https://hcaptcha.com/siteverify', // 无需修改
     js_url: '<script src=\'https://www.hcaptcha.com/1/api.js\' async defer></script>', // 无需修改
-    site_key: '',
-    secret_key: ''
+    site_key: '2d5e65ae-983b-48f6-b498-1fc2e6721538', // 可用Key， 也可以自己申请
+    secret_key: '0xE2257589917FB576EbB03fc5383CBD6583Bab043', // 可用Key， 也可以自己申请
 }
 
 const recaptcha_config = {
@@ -48,23 +48,23 @@ const recaptcha_config = {
     verify_url: 'https://www.recaptcha.net/recaptcha/api/siteverify', // 无需修改
     js_url: '<script src=\'https://www.google.com/recaptcha/api.js\' async defer></script>', // 无需修改
     site_key: '',
-    secret_key: ''
+    secret_key: '',
 }
 
 const member_filter = {
     status: false, // true 为开启筛选， false为关闭筛选
     mode: 'allow', // block 为黑名单（别问我为什么叫block）， allow 为白名单
     member_filter: [], // 单邮箱筛选
-    domain_filter: ['gmail.com'] // 域名屏蔽
+    domain_filter: ['gmail.com'], // 域名屏蔽
 }
 
 const limit_config = {
     emailLimit: false, // 限制每天重复邮箱
     userLimit: false, // 限制每天加盘人数
-    user_limitn: 10 // 加盘人数设定
+    user_limitn: 10, // 加盘人数设定
 }
 
-const add_css = "" // 额外CSS
+const add_css = ``; // 额外CSS
 
 var gd;
 
