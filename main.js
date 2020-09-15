@@ -93,7 +93,7 @@ async function handleRequest(request) {
         }
     }
 
-    if (typeof gd === undefined) {
+    if (typeof gd === "undefined") {
         gd = new googleDrive(authConfig);
     }
     let url = new URL(request.url);
@@ -347,11 +347,11 @@ class googleDrive {
     async accessToken() {
         console.log("accessToken");
         if (
-            typeof this.authConfig.expires === undefined ||
+            typeof this.authConfig.expires === "undefined" ||
             this.authConfig.expires < Date.now()
         ) {
             const obj = await this.fetchAccessToken();
-            if (typeof obj.access_token !== undefined) {
+            if (typeof obj.access_token !== "undefined") {
                 this.authConfig.accessToken = obj.access_token;
                 this.authConfig.expires = Date.now() + 3500 * 1000;
             }
