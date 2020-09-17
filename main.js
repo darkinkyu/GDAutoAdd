@@ -16,11 +16,13 @@
  */
 
 const authConfig = {
-    version: "0.1.1",
-    dailyLimit: false, // 是否限制每一个邮箱每天只能提交一次请求
+    version: "0.2",
+    dailyLimit: false, // 每天限制
     client_id: "",
     client_secret: "",
     refresh_token: "", // 授权 token
+    copyright: "", // 网页底部版权栏， 纯HTML
+    add_css: "", // 网页额外CSS， 仅需代码即可
 };
 
 const captcha_config = {
@@ -31,15 +33,15 @@ const gd_config = {
     type: "", // "group", "drive" 添加至Shared Drive还是Group
     id: "", //Shared Drive ID或Groups ID
     drive_permission: "reader", // Google Drive 权限
-    group_permission: "MEMBER" // Google Groups 权限
+    group_permission: "MEMBER", // Google Groups 权限
 }
 
 const hcaptcha_config = {
     type: 'h-captcha', // 无需修改
     verify_url: 'https://hcaptcha.com/siteverify', // 无需修改
     js_url: '<script src=\'https://www.hcaptcha.com/1/api.js\' async defer></script>', // 无需修改
-    site_key: '',
-    secret_key: ''
+    site_key: '2d5e65ae-983b-48f6-b498-1fc2e6721538', // 可用Key， 也可以自己申请
+    secret_key: '0xE2257589917FB576EbB03fc5383CBD6583Bab043', // 可用Key， 也可以自己申请
 }
 
 const recaptcha_config = {
@@ -47,16 +49,21 @@ const recaptcha_config = {
     verify_url: 'https://www.recaptcha.net/recaptcha/api/siteverify', // 无需修改
     js_url: '<script src=\'https://www.google.com/recaptcha/api.js\' async defer></script>', // 无需修改
     site_key: '',
-    secret_key: ''
+    secret_key: '',
 }
 
 const member_filter = {
-    status: true, // true 为开启筛选， false为关闭筛选
+    status: false, // true 为开启筛选， false为关闭筛选
     mode: 'allow', // block 为黑名单（别问我为什么叫block）， allow 为白名单
-    member_filter: ['test@example.com'], // 单邮箱筛选
-    domain_filter: ['gmail.com'] // 域名屏蔽
+    member_filter: [], // 单邮箱筛选
+    domain_filter: ['gmail.com'], // 域名屏蔽
 }
 
+const limit_config = {
+    emailLimit: false, // 限制每天重复邮箱
+    userLimit: false, // 限制每天加盘人数
+    user_limitn: 10, // 加盘人数设定
+}
 
 var gd;
 
@@ -66,7 +73,8 @@ addEventListener("fetch", event => {
     event.respondWith(handleRequest(event.request));
 });
 
-var dailyLimit = [];
+var dailyEmailLimit = [];
+var dailyUserLimit = 0;
 
 /**
  * Fetch and log a request
@@ -77,13 +85,14 @@ async function handleRequest(request) {
         if (!today) today = new Date().getDate();
 
         // Remove email rate limit every day
-        if (new Date().getDate() != today) {
+        if (new Date().getDate() !== today) {
             today = new Date().getDate();
-            dailyLimit.length = 0;
+            dailyEmailLimit.length = 0;
+            dailyUserLimit = 0;
         }
     }
 
-    if (gd == undefined) {
+    if (typeof gd === "undefined") {
         gd = new googleDrive(authConfig);
     }
     let url = new URL(request.url);
@@ -95,13 +104,12 @@ async function handleRequest(request) {
             if (request.method === "POST") {
                 const requestBody = await request.json();
 
-                if (authConfig.dailyLimit) {
-                    if (dailyLimit.includes(requestBody.emailAddress)) {
-                        return new Response("每天只允许提交一次", {
+                if (authConfig.dailyLimit && requestBody.method === 'add') {
+                    let checkResult = checkLimit(requestBody.emailAddress)
+                    if (checkResult !== "Pass") {
+                        return new Response(checkResult, {
                             status: 429
                         });
-                    } else {
-                        dailyLimit.push(requestBody.emailAddress);
                     }
                 }
                 if (!checkEmail(requestBody.emailAddress)) {
@@ -128,10 +136,20 @@ async function handleRequest(request) {
                     }
                 } else if (gd_config.type === "drive") {
                     try {
-                        let result = await gd.addMemberToTeamDrive(requestBody);
-                        return new Response("OK", {
-                            status: 200
-                        });
+                        let result = "";
+                        if (requestBody.method === 'remove') {
+                            result = await gd.removeMemberFromTeamDrive(requestBody);
+                            return new Response("OK", {
+                                status: 200
+                            });
+                        } else if (requestBody.method === 'add') {
+                            result = await gd.addMemberToTeamDrive(requestBody);
+                            return new Response("OK", {
+                                status: 200
+                            });
+                        } else {
+                            throw "System Error";
+                        }
                     } catch (err) {
                         return new Response(err.toString(), {
                             status: 500
@@ -155,10 +173,10 @@ async function handleRequest(request) {
                 });
             }
         default:
-            const html_response = await fetch('https://cdn.jsdelivr.net/gh/clatteringmarion/GDAutoAdd@0.1.1/index.html');
-            var html = await html_response.text();
+            const html_response = await fetch('https://cdn.jsdelivr.net/gh/clatteringmarion/GDAutoAdd@0.2/index.html');
+            let html = await html_response.text();
 
-            var html_captchascript = '';
+            let html_captchascript = '';
             if (captcha_config.type === "hcaptcha") {
                 html_captchascript = `${hcaptcha_config.js_url}`;
             } else if (captcha_config.type === "recaptcha") {
@@ -166,7 +184,7 @@ async function handleRequest(request) {
             } else {
             }
 
-            var html_captchaprompt = '';
+            let html_captchaprompt = '';
             if (captcha_config.type === "hcaptcha") {
                 html_captchaprompt = `<div class="${hcaptcha_config.type}" data-sitekey="${hcaptcha_config.site_key}"></div>`;
             } else if (captcha_config.type === "recaptcha") {
@@ -174,13 +192,13 @@ async function handleRequest(request) {
             } else {
             }
 
-            var html_captchatoken = '';
+            let html_captchatoken = '';
             if (captcha_config.type === "hcaptcha") {
                 html_captchatoken = 'hcaptcha.getResponse()';
             } else if (captcha_config.type === "recaptcha") {
                 html_captchatoken = 'grecaptcha.getResponse()';
             } else {
-                html_captchatoken = '"empty"';
+                html_captchatoken = '"XXXXXXX_Empty"';
             }
 
             return new Response(myInterpolate({
@@ -188,6 +206,8 @@ async function handleRequest(request) {
                 captcha_script: html_captchascript,
                 captcha_prompt: html_captchaprompt,
                 captcha_token: html_captchatoken,
+                additional_css: authConfig.add_css,
+                bottom_copyRight: authConfig.copyright,
             }, html), {
                 status: 200,
                 headers: {
@@ -198,32 +218,17 @@ async function handleRequest(request) {
     }
 }
 
-// https://stackoverflow.com/a/2117523
-function uuidv4() {
-    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
-        // tslint:disable-next-line:one-variable-per-declaration
-        const r = (Math.random() * 16) | 0,
-            // tslint:disable-next-line:triple-equals
-            v = c == "x" ? r : (r & 0x3) | 0x8;
-        return v.toString(16);
-    });
-}
-
 function checkEmail(email_address) {
-    var idx = email_address.lastIndexOf('@');
+    let idx = email_address.lastIndexOf('@');
     if (member_filter.status) {
         if (member_filter.mode === "block") {
-            if (member_filter.domain_filter.includes(email_address.slice(idx + 1))) {
-                return false;
-            } else if (member_filter.member_filter.includes(email_address)) {
+            if ((member_filter.domain_filter.includes(email_address.slice(idx + 1))) || member_filter.member_filter.includes(email_address)) {
                 return false;
             } else {
                 return true;
             }
         } else if (member_filter.mode === "allow") {
-            if (member_filter.domain_filter.includes(email_address.slice(idx + 1))) {
-                return true;
-            } else if (member_filter.member_filter.includes(email_address)) {
+            if ((member_filter.domain_filter.includes(email_address.slice(idx + 1))) || member_filter.member_filter.includes(email_address)) {
                 return true;
             } else {
                 return false;
@@ -241,6 +246,18 @@ function myInterpolate(params, text) {
         text = text.replace('${' + key + '}', params[key])
     }
     return text;
+}
+
+function checkLimit(email) {
+    if (dailyEmailLimit.includes(email) && limit_config.emailLimit) {
+        return "每天只允许提交一次";
+    } else if (dailyUserLimit >= limit_config.user_limitn && limit_config.userLimit) {
+        return "今天限额已到，明天趁早";
+    } else {
+        dailyEmailLimit.push(email);
+        dailyUserLimit += 1;
+        return "Pass";
+    }
 }
 
 class googleDrive {
@@ -285,14 +302,55 @@ class googleDrive {
         return await response.text();
     }
 
+    async _removeMemberFromTeamDrive(permission) {
+        let url = `https://www.googleapis.com/drive/v3/files/${gd_config.id}/permissions/${permission.id}`;
+        let params = {supportsAllDrives: true};
+        url += "?" + this.enQuery(params);
+        let requestOption = await this.requestOption(
+            {"Content-Type": "application/json"},
+            'DELETE'
+        );
+        let response = await fetch(url, requestOption);
+        return await response.text();
+    }
+
+    async removeMemberFromTeamDrive(requestBody) {
+        // Share team drive with email address
+        console.log(`Remove ${requestBody.emailAddress} from the team drive`);
+
+        let pageToken = '';
+        do {
+            let url = `https://www.googleapis.com/drive/v3/files/${gd_config.id}/permissions`;
+            let params = {supportsAllDrives: true, fields: '*'};
+            url += "?" + this.enQuery(params);
+            let requestOption = await this.requestOption(
+                {"Content-Type": "application/json"},
+            );
+            let response = await fetch(url, requestOption);
+            var permissions = await response.json();
+
+            for (var p in permissions.permissions) {
+                if (permissions.permissions[p].emailAddress == requestBody.emailAddress && permissions.permissions[p].role == 'reader') {
+                    var removeResponse = await this._removeMemberFromTeamDrive(permissions.permissions[p]);
+                    return;
+                }
+            }
+
+            if (permissions.nextPageToken) {
+                pageToken = permissions.nextPageToken;
+            }
+        } while (permissions.nextPageToken);
+    }
+
+
     async accessToken() {
         console.log("accessToken");
         if (
-            this.authConfig.expires == undefined ||
+            typeof this.authConfig.expires === "undefined" ||
             this.authConfig.expires < Date.now()
         ) {
             const obj = await this.fetchAccessToken();
-            if (obj.access_token != undefined) {
+            if (typeof obj.access_token !== "undefined") {
                 this.authConfig.accessToken = obj.access_token;
                 this.authConfig.expires = Date.now() + 3500 * 1000;
             }
@@ -368,3 +426,4 @@ class googleDrive {
         return ret.join("&");
     }
 }
+
