@@ -16,12 +16,13 @@
  */
 
 const authConfig = {
-    version: "0.1.2-beta",
+    version: "0.2",
     dailyLimit: false, // 每天限制
     client_id: "",
     client_secret: "",
     refresh_token: "", // 授权 token
-    copyRight: "", // 网页底部版权栏， 纯HTML
+    copyright: "", // 网页底部版权栏， 纯HTML
+    add_css: "", // 网页额外CSS， 仅需代码即可
 };
 
 const captcha_config = {
@@ -63,8 +64,6 @@ const limit_config = {
     userLimit: false, // 限制每天加盘人数
     user_limitn: 10, // 加盘人数设定
 }
-
-const add_css = ``; // 额外CSS
 
 var gd;
 
@@ -174,7 +173,7 @@ async function handleRequest(request) {
                 });
             }
         default:
-            const html_response = await fetch('https://cdn.jsdelivr.net/gh/clatteringmarion/GDAutoAdd@dev/index.html');
+            const html_response = await fetch('https://cdn.jsdelivr.net/gh/clatteringmarion/GDAutoAdd@0.2/index.html');
             let html = await html_response.text();
 
             let html_captchascript = '';
@@ -207,8 +206,8 @@ async function handleRequest(request) {
                 captcha_script: html_captchascript,
                 captcha_prompt: html_captchaprompt,
                 captcha_token: html_captchatoken,
-                additional_css: add_css,
-                bottom_copyRight: authConfig.copyRight,
+                additional_css: authConfig.add_css,
+                bottom_copyRight: authConfig.copyright,
             }, html), {
                 status: 200,
                 headers: {
