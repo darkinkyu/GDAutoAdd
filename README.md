@@ -41,11 +41,11 @@ This program is released under license [GPLv3](https://www.gnu.org/licenses/gpl-
 
 ## 安装
 
-1.创建新的CloudFlare Worker， 并将main.js粘贴进去。
-2.获取您的client_id，client_secret和refresh_token，粘贴到authConfig中。
-3.通过更改`captcha_config`启用验证码，并将site_key和secret_key添加到相应的设置中。
-4.在gd_config中输入您的组ID或共享驱动器ID。 如果要将用户添加到组中，请在`gd_config.type`中输入"group"，或输入"drive"
-5.修改`member_filter`部分。 使用白名单和黑名单筛选用户（如需设置单用户名单， 写在"member_filter"里。 域名名单使用"domain_filter"）
+1. 创建新的CloudFlare Worker， 并将main.js粘贴进去.
+2. 获取您的client_id，client_secret和refresh_token，粘贴到authConfig中。
+3. 通过更改`captcha_config`启用验证码，并将site_key和secret_key添加到相应的设置中。
+4. 在gd_config中输入您的组ID或共享驱动器ID。 如果要将用户添加到组中，请在`gd_config.type`中输入"group"，或输入"drive"
+5. 修改`member_filter`部分。 使用白名单和黑名单筛选用户（如需设置单用户名单， 写在"member_filter"里。 域名名单使用"domain_filter"）
 
 ## 用法
 
